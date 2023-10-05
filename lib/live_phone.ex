@@ -1,4 +1,8 @@
 defmodule LivePhone do
+  @external_resource "./README.md"
+  @moduledoc """
+  #{File.read!(@external_resource)}
+  """
 
   use Phoenix.LiveComponent
   use Phoenix.HTML
@@ -43,7 +47,7 @@ defmodule LivePhone do
     <div
       class={"live_phone flex-1 #{if @valid?, do: "live_phone-valid"}"}
       id={"live_phone-#{@id}"}
-      phx-hook="Phone"
+      phx-hook="LivePhone"
     >
       <.country_selector
         tabindex={@tabindex}
@@ -101,9 +105,9 @@ defmodule LivePhone do
           found_value
       end || ""
 
-    {_, formatted_value} = normalize(value, socket.assigns[:country])
+    {_, formatted_value} = Util.normalize(value, socket.assigns[:country])
     value = apply_mask(value, socket.assigns[:country])
-    valid? = valid?(formatted_value)
+    valid? = Util.valid?(formatted_value)
 
     push? = socket.assigns[:formatted_value] != formatted_value
 
@@ -146,7 +150,7 @@ defmodule LivePhone do
   end
 
   def handle_event("select_country", %{"country" => country}, socket) do
-    valid? = valid?(socket.assigns[:formatted_value])
+    valid? = Util.valid?(socket.assigns[:formatted_value])
 
     placeholder =
       if socket.assigns[:country] == country do
@@ -251,7 +255,7 @@ defmodule LivePhone do
       aria-expanded={to_string(@opened?)}
       role="combobox"
     >
-      <span class="live_phone-country-flag"><%= emoji_for_country(@country) %></span>
+      <span class="live_phone-country-flag"><%= Util.emoji_for_country(@country) %></span>
       <span class="live_phone-country-code"><%= @region_code %></span>
     </div>
     """
@@ -312,33 +316,4 @@ defmodule LivePhone do
     </li>
     """
   end
-
-  def valid?(phone) do
-    case ExPhoneNumber.parse(phone, nil) do
-      {:ok, parsed_phone} -> ExPhoneNumber.is_valid_number?(parsed_phone)
-      _ -> false
-    end
-  end
-
-  def normalize(phone, country) do
-    phone
-    |> String.replace(~r/[^+\d]/, "")
-    |> ExPhoneNumber.parse(country)
-    |> case do
-      {:ok, result} -> {:ok, ExPhoneNumber.format(result, :e164)}
-      _ -> {:error, phone}
-    end
-  end
-
-  def emoji_for_country(nil), do: ""
-
-  def emoji_for_country(country_code) do
-    country_code
-    |> String.upcase()
-    |> String.to_charlist()
-    |> Enum.map(&(&1 - 65 + 127_462))
-    |> List.to_string()
-  end
-
-
 end
